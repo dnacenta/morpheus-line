@@ -1,0 +1,33 @@
+[server]
+host = "0.0.0.0"
+port = 8443
+# Public URL where Twilio can reach this server (behind nginx)
+external_url = "https://your-server.example.com"
+
+[twilio]
+# Secrets loaded from .env (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+account_sid = ""
+auth_token = ""
+phone_number = "+1..."
+
+[groq]
+# Secret loaded from .env (GROQ_API_KEY)
+api_key = ""
+model = "whisper-large-v3-turbo"
+
+[elevenlabs]
+# Secret loaded from .env (ELEVENLABS_API_KEY)
+api_key = ""
+voice_id = "JAgnJveGGUh4qy4kh6dF"
+
+[claude]
+# Uses `claude` CLI from PATH — no API key needed
+session_timeout_secs = 300
+
+[api]
+# Secret loaded from .env (MORPHEUS_API_TOKEN)
+token = ""
+
+[vad]
+silence_threshold_ms = 1500
+energy_threshold = 50

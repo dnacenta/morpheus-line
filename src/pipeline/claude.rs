@@ -1,0 +1,98 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::process::Command;
+use tokio::sync::Mutex;
+
+/// Bridge to Claude Code CLI. Manages conversation sessions per call.
+pub struct ClaudeBridge {
+    sessions: Arc<Mutex<HashMap<String, Session>>>,
+    session_timeout: Duration,
+}
+
+struct Session {
+    conversation_id: Option<String>,
+    last_used: Instant,
+}
+
+impl ClaudeBridge {
+    pub fn new(session_timeout_secs: u64) -> Self {
+        Self {
+            sessions: Arc::new(Mutex::new(HashMap::new())),
+            session_timeout: Duration::from_secs(session_timeout_secs),
+        }
+    }
+
+    /// Send a prompt to Claude Code CLI and get the response text.
+    ///
+    /// Uses conversation continuation (`-r`) if a previous conversation
+    /// exists for this call session, enabling multi-turn voice chats.
+    pub async fn send(
+        &self,
+        call_sid: &str,
+        prompt: &str,
+    ) -> Result<String, ClaudeError> {
+        let mut sessions = self.sessions.lock().await;
+
+        // Clean up expired sessions
+        sessions.retain(|_, s| s.last_used.elapsed() < self.session_timeout);
+
+        let session = sessions
+            .entry(call_sid.to_string())
+            .or_insert_with(|| Session {
+                conversation_id: None,
+                last_used: Instant::now(),
+            });
+
+        let mut cmd = Command::new("claude");
+        cmd.arg("-p").arg(prompt).arg("--output-format").arg("text");
+
+        // Continue existing conversation if we have one
+        if let Some(ref conv_id) = session.conversation_id {
+            cmd.arg("-r").arg(conv_id);
+        }
+
+        session.last_used = Instant::now();
+        drop(sessions); // Release lock during CLI execution
+
+        tracing::info!(call_sid, "Sending prompt to Claude CLI");
+
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| ClaudeError::Spawn(e.to_string()))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(ClaudeError::Cli(format!(
+                "Exit {}: {}",
+                output.status,
+                stderr.trim()
+            )));
+        }
+
+        let response = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        // For now, we don't parse conversation ID from claude CLI output.
+        // Multi-turn via -r requires the session ID which claude -p doesn't
+        // currently expose in a machine-readable way. Each call turn is
+        // independent. This is a known limitation to revisit.
+
+        tracing::info!(call_sid, response_len = response.len(), "Claude responded");
+
+        Ok(response)
+    }
+
+    /// Remove a session (call ended).
+    pub async fn end_session(&self, call_sid: &str) {
+        self.sessions.lock().await.remove(call_sid);
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ClaudeError {
+    #[error("Failed to spawn claude CLI: {0}")]
+    Spawn(String),
+    #[error("Claude CLI error: {0}")]
+    Cli(String),
+}
