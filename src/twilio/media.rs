@@ -126,6 +126,16 @@ async fn handle_media_stream(mut socket: WebSocket, state: AppState) {
                             stream_sid = %stream_sid,
                             "Stream started"
                         );
+
+                        // Send greeting via TTS
+                        let tx = response_tx.clone();
+                        let sid = stream_sid.clone();
+                        let st = state.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) = send_greeting(&sid, &st, &tx).await {
+                                tracing::error!("Failed to send greeting: {e}");
+                            }
+                        });
                     }
                     StreamEvent::Media { media, .. } => {
                         let mulaw_bytes = match base64::engine::general_purpose::STANDARD
@@ -199,11 +209,16 @@ async fn process_utterance(
 
     // 2. WAV → Text (Groq Whisper)
     let transcript = state.stt.transcribe(wav_data).await?;
-    if transcript.trim().is_empty() {
+    let trimmed = transcript.trim();
+    if trimmed.is_empty() {
         tracing::debug!("Empty transcript, skipping");
         return Ok(());
     }
-    tracing::info!(call_sid, transcript = %transcript, "Transcribed");
+    if is_whisper_hallucination(trimmed) {
+        tracing::debug!(transcript = %trimmed, "Filtered whisper hallucination");
+        return Ok(());
+    }
+    tracing::info!(call_sid, transcript = %trimmed, "Transcribed");
 
     // 3. Text → Claude response
     let response = state.claude.send(call_sid, &transcript).await?;
@@ -251,6 +266,52 @@ async fn send_audio(
     tx.send(Message::Text(mark.to_string().into())).await?;
 
     Ok(())
+}
+
+/// Known Whisper hallucinations — phrases it generates from silence/noise.
+const WHISPER_HALLUCINATIONS: &[&str] = &[
+    "thank you",
+    "thank you.",
+    "thanks for watching",
+    "thanks for watching.",
+    "thank you for watching",
+    "thank you for watching.",
+    "subscribe",
+    "like and subscribe",
+    "bye",
+    "bye.",
+    "bye bye",
+    "bye bye.",
+    "you",
+    "you.",
+    "the end",
+    "the end.",
+    "so",
+    "...",
+    "eh",
+    "hmm",
+    "uh",
+    "oh",
+];
+
+fn is_whisper_hallucination(transcript: &str) -> bool {
+    let lower = transcript.to_lowercase();
+    WHISPER_HALLUCINATIONS.iter().any(|h| lower == *h)
+}
+
+/// Speak the configured greeting when a call connects.
+async fn send_greeting(
+    stream_sid: &str,
+    state: &AppState,
+    tx: &mpsc::Sender<Message>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let greeting = &state.config.claude.greeting;
+    if greeting.is_empty() {
+        return Ok(());
+    }
+    tracing::info!("Sending greeting");
+    let pcm_bytes = state.tts.synthesize(greeting).await?;
+    send_audio(stream_sid, &pcm_bytes, tx).await
 }
 
 /// Speak a fallback error message to the caller when the pipeline fails.
