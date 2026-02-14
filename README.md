@@ -1,5 +1,10 @@
 # morpheus-line
 
+[![CI](https://github.com/dnacenta/morpheus-line/actions/workflows/ci.yml/badge.svg?branch=development)](https://github.com/dnacenta/morpheus-line/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/github/license/dnacenta/morpheus-line)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-green)](Cargo.toml)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)](https://rustup.rs/)
+
 Voice interface for Claude Code over the phone. Call in and talk to Claude, or trigger outbound calls from n8n / automation workflows.
 
 Built in Rust. Uses Twilio for telephony, Groq Whisper for speech-to-text, ElevenLabs for text-to-speech, and the Claude Code CLI for reasoning.
