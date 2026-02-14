@@ -15,18 +15,13 @@ pub async fn handle_voice(State(state): State<AppState>) -> Response {
     let twiml = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say>Connected to Claude. Go ahead and speak.</Say>
     <Connect>
         <Stream url="{ws_url}" />
     </Connect>
 </Response>"#
     );
 
-    (
-        [("Content-Type", "text/xml")],
-        twiml,
-    )
-        .into_response()
+    ([("Content-Type", "text/xml")], twiml).into_response()
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,11 +54,7 @@ pub async fn handle_voice_outbound(
 </Response>"#
     );
 
-    (
-        [("Content-Type", "text/xml")],
-        twiml,
-    )
-        .into_response()
+    ([("Content-Type", "text/xml")], twiml).into_response()
 }
 
 fn media_stream_url(external_url: &str) -> String {
