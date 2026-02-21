@@ -1,6 +1,7 @@
 mod api;
 mod config;
 mod pipeline;
+mod setup;
 mod twilio;
 
 use std::collections::HashMap;
@@ -20,6 +21,8 @@ use pipeline::stt::SttClient;
 use pipeline::tts::TtsClient;
 use twilio::outbound::TwilioClient;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Shared application state accessible from all handlers.
 #[derive(Clone)]
 pub struct AppState {
@@ -35,8 +38,40 @@ pub struct AppState {
     pub call_contexts: Arc<Mutex<HashMap<String, String>>>,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    match args.get(1).map(|s| s.as_str()) {
+        Some("--setup") => setup::run(),
+        Some("--version") => println!("trinity-echo {VERSION}"),
+        Some("--help") | Some("-h") => print_usage(),
+        Some(other) => {
+            eprintln!("Unknown option: {other}");
+            print_usage();
+            std::process::exit(1);
+        }
+        None => {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+            rt.block_on(server());
+        }
+    }
+}
+
+fn print_usage() {
+    println!("trinity-echo {VERSION}");
+    println!("Voice interface for Claude Code via Twilio");
+    println!();
+    println!("Usage: trinity-echo [OPTIONS]");
+    println!();
+    println!("Options:");
+    println!("  --setup     Run interactive configuration wizard");
+    println!("  --version   Print version");
+    println!("  --help, -h  Print this help message");
+    println!();
+    println!("Without options, starts the voice server.");
+}
+
+async fn server() {
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter(
