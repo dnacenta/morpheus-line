@@ -22,9 +22,19 @@ pub fn run_checks() -> bool {
     let mut all_ok = true;
     for c in &checks {
         if c.found {
-            println!("  {} {}: {}", ansi::green("\u{2713}"), c.name, ansi::dim(&c.detail));
+            println!(
+                "  {} {}: {}",
+                ansi::green("\u{2713}"),
+                c.name,
+                ansi::dim(&c.detail)
+            );
         } else {
-            println!("  {} {}: {}", ansi::red("\u{2717}"), c.name, ansi::red(&c.detail));
+            println!(
+                "  {} {}: {}",
+                ansi::red("\u{2717}"),
+                c.name,
+                ansi::red(&c.detail)
+            );
             all_ok = false;
         }
     }
@@ -52,7 +62,12 @@ fn check_tool(cmd: &'static str, args: &[&str], display_name: &'static str) -> C
         }
         Ok(output) => {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let msg = stderr.lines().next().unwrap_or("unknown error").trim().to_string();
+            let msg = stderr
+                .lines()
+                .next()
+                .unwrap_or("unknown error")
+                .trim()
+                .to_string();
             CheckResult {
                 name: display_name,
                 found: false,

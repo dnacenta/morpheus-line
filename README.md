@@ -126,7 +126,15 @@ The binary will be at `target/release/trinity-echo`.
 
 ### 2. Configure
 
-Copy the example files to `~/.trinity-echo/`:
+Run the interactive setup wizard:
+
+```bash
+./target/release/trinity-echo --setup
+```
+
+The wizard checks prerequisites, prompts for API keys (masked input), generates `~/.trinity-echo/config.toml` and `.env`, and optionally installs the systemd service and nginx config.
+
+**Manual setup** -- if you prefer to configure by hand:
 
 ```bash
 mkdir -p ~/.trinity-echo
@@ -194,7 +202,7 @@ POST https://your-server.example.com/twilio/voice
 | `groq`        | `api_key`              | --                        | Groq API key (overridden by env var)             |
 | `groq`        | `model`                | `whisper-large-v3-turbo`  | Whisper model to use                             |
 | `elevenlabs`  | `api_key`              | --                        | ElevenLabs API key (overridden by env var)       |
-| `elevenlabs`  | `voice_id`             | `JAgnJveGGUh4qy4kh6dF`   | ElevenLabs voice ID                              |
+| `elevenlabs`  | `voice_id`             | `EST9Ui6982FZPSi7gCHi`   | ElevenLabs voice ID                              |
 | `claude`      | `session_timeout_secs` | `300`                     | Conversation session timeout                     |
 | `api`         | `token`                | --                        | Bearer token for `/api/*` (overridden by env var)|
 | `vad`         | `silence_threshold_ms` | `1500`                    | Silence duration before utterance ends           |
