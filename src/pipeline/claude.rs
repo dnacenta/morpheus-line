@@ -84,7 +84,11 @@ impl ClaudeBridge {
             session.last_used = Instant::now();
         }
 
-        tracing::info!(call_sid, response_len = parsed.result.len(), "Claude responded");
+        tracing::info!(
+            call_sid,
+            response_len = parsed.result.len(),
+            "Claude responded"
+        );
 
         Ok(parsed.result)
     }
