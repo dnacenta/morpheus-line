@@ -315,7 +315,10 @@ async fn run_pipeline(
     };
 
     // 5. Response → TTS audio
-    let tts_pcm_bytes = state.tts.synthesize_with_voice(&response, &voice_id).await?;
+    let tts_pcm_bytes = state
+        .tts
+        .synthesize_with_voice(&response, &voice_id)
+        .await?;
     tracing::debug!(tts_bytes = tts_pcm_bytes.len(), "TTS audio generated");
 
     Ok(Some(tts_pcm_bytes))
