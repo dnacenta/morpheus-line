@@ -33,10 +33,7 @@ pub fn write_config(values: &SetupValues) -> PathBuf {
     // Write config.toml
     let config_path = config_dir.join("config.toml");
     if config_path.exists() {
-        println!(
-            "  {} config.toml already exists",
-            ansi::yellow("!")
-        );
+        println!("  {} config.toml already exists", ansi::yellow("!"));
         if !confirm("Overwrite?") {
             println!("  Skipping config.toml");
         } else {
@@ -49,10 +46,7 @@ pub fn write_config(values: &SetupValues) -> PathBuf {
     // Write .env
     let env_path = config_dir.join(".env");
     if env_path.exists() {
-        println!(
-            "  {} .env already exists",
-            ansi::yellow("!")
-        );
+        println!("  {} .env already exists", ansi::yellow("!"));
         if !confirm("Overwrite?") {
             println!("  Skipping .env");
         } else {
@@ -164,7 +158,11 @@ pub fn install_binary() {
             // Make executable
             let perms = fs::Permissions::from_mode(0o755);
             fs::set_permissions(target, perms).ok();
-            println!("  {} Copied to {}", ansi::green("\u{2713}"), target.display());
+            println!(
+                "  {} Copied to {}",
+                ansi::green("\u{2713}"),
+                target.display()
+            );
         }
         Err(e) => {
             println!(
