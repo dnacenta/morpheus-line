@@ -559,7 +559,8 @@
       </div>
       <p class="desc">
         Voice interface that connects phone calls to Claude Code CLI.
-        Call in or trigger outbound calls from your automation workflows.
+        Call in, or let Claude call you -- with full context on why it's reaching out.
+        Integrates with n8n for AI-initiated calls from any automation workflow.
       </p>
       <div class="hero-actions">
         <a href="https://github.com/dnacenta/trinity-echo" class="btn-primary" target="_blank" rel="noopener">
@@ -655,8 +656,14 @@
         <div class="feature-card">
           <div class="feature-icon">&#128225;</div>
           <h3>Outbound Call API</h3>
-          <p>POST to <code>/api/call</code> with a phone number and optional message. Trigger calls from n8n, curl, or any automation.</p>
+          <p>POST to <code>/api/call</code> with a phone number and context. Claude knows <em>why</em> it's calling before the conversation starts.</p>
           <span class="feature-tag">POST /api/call</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128268;</div>
+          <h3>n8n Bridge</h3>
+          <p>Orchestrator routes triggers from any n8n workflow to the call-human module. Alerts, cron jobs, or events can initiate AI calls with full context.</p>
+          <span class="feature-tag">n8n integration</span>
         </div>
         <div class="feature-card">
           <div class="feature-icon">&#9889;</div>
@@ -723,6 +730,13 @@
           <div class="stack-info">
             <h4>Claude Code CLI</h4>
             <p>reasoning engine</p>
+          </div>
+        </div>
+        <div class="stack-item">
+          <div class="stack-icon">&#128268;</div>
+          <div class="stack-info">
+            <h4>n8n</h4>
+            <p>workflow automation</p>
           </div>
         </div>
       </div>
