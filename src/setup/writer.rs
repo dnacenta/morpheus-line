@@ -274,8 +274,7 @@ server {{
         domain = domain,
     );
 
-    let path_str = format!("/etc/nginx/sites-available/trinity-echo");
-    let path = Path::new(&path_str);
+    let path = Path::new("/etc/nginx/sites-available/trinity-echo");
 
     match fs::write(path, &config) {
         Ok(_) => {
