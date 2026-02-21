@@ -11,6 +11,8 @@ Built in Rust. Uses Twilio for telephony, Groq Whisper for speech-to-text, Eleve
 
 ## Architecture
 
+### Voice Pipeline
+
 ```
                          ┌─────────────────────────────────────┐
                          │          trinity-echo (axum)        │
@@ -23,10 +25,64 @@ Built in Rust. Uses Twilio for telephony, Groq Whisper for speech-to-text, Eleve
                          │                         │           │
                          │                    mu-law encode     │
                          └─────────────────────────────────────┘
-                                        ▲
-                                        │ POST /api/call
-                                   n8n / curl
 ```
+
+### n8n Bridge — AI-Initiated Calls
+
+```
+  ┌──────────────┐    trigger     ┌──────────────────┐
+  │  Any module   │──────────────►│   Orchestrator    │
+  │  (slack,      │               │   reads registry, │
+  │   standup,    │               │   routes to       │
+  │   alerts...) │               │   target module   │
+  └──────────────┘               └────────┬─────────┘
+                                          │
+                                          ▼
+                                 ┌──────────────────┐
+                                 │   call-human      │
+                                 │   builds request, │
+                                 │   passes context  │
+                                 └────────┬─────────┘
+                                          │
+                                          │ POST /api/call
+                                          │ { to, context }
+                                          ▼
+                                 ┌──────────────────┐
+                                 │  trinity-echo     │
+                                 │  stores context   │──► Twilio ──► Phone rings
+                                 │  per call_sid     │
+                                 └────────┬─────────┘
+                                          │
+                                          │ caller picks up
+                                          ▼
+                                 ┌──────────────────┐
+                                 │  Claude CLI       │
+                                 │  first prompt     │
+                                 │  includes context │
+                                 │  "I'm calling     │
+                                 │   because..."     │
+                                 └──────────────────┘
+```
+
+### Full System
+
+```
+  ┌─────────┐        ┌──────────┐        ┌───────────────┐
+  │  Slack   │◄──────►│   n8n    │◄──────►│ claude-bridge │──► Claude CLI
+  └─────────┘        │ (Docker) │        └───────────────┘
+                     │          │
+  ┌─────────┐        │  modules:│        ┌───────────────┐
+  │ Triggers │──────►│  orchest.│──────►│ trinity-echo  │──► Claude CLI
+  │ (cron,   │       │  call-   │  API   │ (Rust, axum)  │
+  │  webhook,│       │  human,  │        └───────┬───────┘
+  │  events) │       │  slack,  │                │
+  └─────────┘        │  standup │                ▼
+                     └──────────┘        ┌───────────────┐
+                                         │    Twilio      │◄──► Phone
+                                         └───────────────┘
+```
+
+Claude CLI is the brain, n8n is the nervous system, trinity-echo is the voice.
 
 ## How It Works
 
@@ -44,10 +100,12 @@ Built in Rust. Uses Twilio for telephony, Groq Whisper for speech-to-text, Eleve
 
 ### Outbound calls
 
-1. POST to `/api/call` with a phone number and optional initial message
+1. POST to `/api/call` with a phone number and optional context
 2. trinity-echo calls Twilio REST API to initiate the call
-3. When the recipient picks up, Twilio hits `/twilio/voice/outbound`
-4. Same media stream pipeline kicks in -- full duplex conversation with Claude
+3. Context is stored per `call_sid` so Claude knows *why* it's calling
+4. When the recipient picks up, Twilio hits `/twilio/voice/outbound`
+5. Same media stream pipeline kicks in -- Claude's first prompt includes the context
+6. Context is consumed after first use, subsequent turns are normal conversation
 
 ## Prerequisites
 
@@ -174,14 +232,42 @@ Just call your Twilio number. You'll hear "Connected to Claude. Go ahead and spe
 curl -X POST https://your-server.example.com/api/call \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"to": "+34612345678", "message": "Server CPU at 95 percent"}'
+  -d '{
+    "to": "+34612345678",
+    "context": "Server CPU at 95% for the last 10 minutes. Top processes: n8n 45%, claude 30%."
+  }'
 ```
 
-The recipient picks up, hears the initial message (if provided), then can talk to Claude.
+The recipient picks up and Claude already knows why it called -- context is injected into the first prompt. The optional `message` field adds a Twilio `<Say>` greeting before the stream starts (usually not needed since Claude handles the greeting via TTS).
 
-### n8n integration
+### n8n Bridge
 
-Use an HTTP Request node in n8n to POST to `/api/call`. Set the bearer token in the header. Useful for alerting workflows -- Claude can explain what's happening when the call connects.
+trinity-echo integrates with n8n through a bridge architecture:
+
+- **Orchestrator** -- central webhook that routes triggers to registered modules
+- **Modules** -- individual workflows managed via a JSON registry
+- **call-human** -- module that triggers outbound calls with context
+
+Trigger a call from any n8n workflow via the orchestrator:
+
+```bash
+curl -X POST http://localhost:5678/webhook/orchestrator \
+  -H "Content-Type: application/json" \
+  -H "X-Bridge-Secret: YOUR_BRIDGE_SECRET" \
+  -d '{
+    "action": "trigger",
+    "module": "call-human",
+    "data": {
+      "reason": "Server CPU critical",
+      "context": "CPU at 95% for 10 minutes. Load average 12.5.",
+      "urgency": "high"
+    }
+  }'
+```
+
+The orchestrator reads the module registry, forwards the payload to the `call-human` webhook, which calls the trinity-echo API with context. When the user picks up, Claude knows exactly what's happening.
+
+Other modules (Slack chat, daily standup, agent reports) can also trigger calls by routing through the orchestrator. See `specs/n8n-bridge-spec.md` for the full specification.
 
 ## Costs
 
