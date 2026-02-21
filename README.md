@@ -111,7 +111,7 @@ The wizard walks you through the entire setup:
 - Prompts for Twilio, Groq, and ElevenLabs credentials (masked input)
 - Asks for your server's external URL
 - Generates an API token for the outbound call endpoint
-- Writes `~/.trinity-echo/config.toml` and `.env` (secrets stored in `.env` with 0600 permissions)
+- Writes `~/.trinity-echo/config.toml`
 - Optionally copies the binary to `/usr/local/bin/`, installs a systemd service, and generates an nginx reverse proxy config
 
 If you skip the optional steps during the wizard, you can always set them up manually using the templates in `deploy/`.

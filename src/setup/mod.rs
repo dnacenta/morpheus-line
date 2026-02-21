@@ -34,7 +34,10 @@ pub fn run() {
         if validate_e164(&num) {
             break num;
         }
-        println!("  {} Invalid E.164 format (expected: +<digits>)", ansi::red("!"));
+        println!(
+            "  {} Invalid E.164 format (expected: +<digits>)",
+            ansi::red("!")
+        );
     };
 
     // Groq
@@ -44,8 +47,7 @@ pub fn run() {
     // ElevenLabs
     println!("\n  {} ElevenLabs (TTS)", ansi::bold(">>"));
     let elevenlabs_api_key = prompts::ask_secret("API Key");
-    let elevenlabs_voice_id =
-        prompts::ask("Voice ID", Some("EST9Ui6982FZPSi7gCHi"));
+    let elevenlabs_voice_id = prompts::ask("Voice ID", Some("EST9Ui6982FZPSi7gCHi"));
 
     // Server
     println!("\n  {} Server", ansi::bold(">>"));
